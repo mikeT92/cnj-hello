@@ -1,0 +1,15 @@
+# docker-compose.yml
+# ----------------------------------------------------------------------------
+# Composes Docker containers and volumes to a runnable Java EE application
+# ----------------------------------------------------------------------------
+#
+---
+version: '3'
+
+services:
+
+  payara:
+    image: hmfwpcnj/cnj-hello-backend-javaee:latest
+    ports:
+      - "8080:8080"
+      - "4848:4848"
