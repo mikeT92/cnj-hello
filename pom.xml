@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.hm.cs.fwp.cloud</groupId>
     <artifactId>cnj-hello</artifactId>
-    <version>0.8.0</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <description>Simple cloud native Java application</description>
     <properties>

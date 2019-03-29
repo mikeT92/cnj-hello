@@ -13,7 +13,7 @@ docker run --name cnj-hello-backend-micro -p 8080:8080 hmfwpcnj/cnj-hello-backen
 
 ## Build this application 
 
-TODO: add build instructions!
+See [cnj-hello](../README.md) for build instructions.
 
 ## Exposed REST endpoints
 

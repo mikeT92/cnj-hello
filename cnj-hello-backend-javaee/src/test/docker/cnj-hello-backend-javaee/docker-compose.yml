@@ -8,7 +8,7 @@ version: '3'
 
 services:
 
-  payara:
+  backend:
     image: hmfwpcnj/cnj-hello-backend-javaee:latest
     ports:
       - "8080:8080"

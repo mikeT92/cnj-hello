@@ -8,7 +8,7 @@ version: '3'
 
 services:
 
-  cna-spring-hello:
+  backend:
     image: hmfwpcnj/cnj-hello-backend-spring:latest
     ports:
       - "8080:8080"
