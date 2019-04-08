@@ -1,4 +1,4 @@
-package edu.hm.cs.fwp.cloudtrain.hello.adapter.rest;
+package edu.hm.cs.fwp.cloudtrain.adapter.rest;
 
 import edu.hm.cs.fwp.cloud.common.test.adapter.rest.RestAssuredSystemTestFixture;
 import io.restassured.http.ContentType;

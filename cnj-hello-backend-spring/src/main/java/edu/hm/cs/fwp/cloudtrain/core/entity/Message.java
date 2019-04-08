@@ -1,4 +1,4 @@
-package edu.hm.cs.fwp.cloudtrain.hello.core.entity;
+package edu.hm.cs.fwp.cloudtrain.core.entity;
 
 import java.util.Locale;
 import java.util.UUID;

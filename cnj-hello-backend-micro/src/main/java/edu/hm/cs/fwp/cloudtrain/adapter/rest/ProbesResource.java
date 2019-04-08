@@ -1,4 +1,4 @@
-package edu.hm.cs.fwp.cloudtrain.hello.adapter.rest;
+package edu.hm.cs.fwp.cloudtrain.adapter.rest;
 
 import javax.enterprise.context.RequestScoped;
 import javax.ws.rs.GET;

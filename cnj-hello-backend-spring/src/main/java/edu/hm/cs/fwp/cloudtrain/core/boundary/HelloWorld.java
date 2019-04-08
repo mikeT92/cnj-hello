@@ -1,9 +1,9 @@
-package edu.hm.cs.fwp.cloudtrain.hello.core.boundary;
+package edu.hm.cs.fwp.cloudtrain.core.boundary;
 
 import java.util.Locale;
 import java.util.UUID;
 
-import edu.hm.cs.fwp.cloudtrain.hello.core.entity.Message;
+import edu.hm.cs.fwp.cloudtrain.core.entity.Message;
 import org.springframework.stereotype.Service;
 
 @Service
