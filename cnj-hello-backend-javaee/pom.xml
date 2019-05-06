@@ -1,7 +1,7 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>edu.hm.cs.fwp.cnj</groupId>
+    <groupId>edu.hm.cs.fwp.cloud</groupId>
     <artifactId>cnj-hello-backend-javaee</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
@@ -97,7 +97,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>edu.hm.cs.fwp.cnj</groupId>
+            <groupId>edu.hm.cs.fwp.cloud</groupId>
             <artifactId>cnj-hello-backend-test</artifactId>
             <version>1.0.0</version>
             <scope>test</scope>
@@ -268,6 +268,26 @@
 									</images>
 								</configuration>
 							</execution>
+                            <execution>
+                                <id>push-docker-image</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>push</goal>
+                                </goals>
+                                <configuration>
+                                    <images>
+                                        <image>
+                                            <name>${docker.image.name}</name>
+                                            <build>
+                                                <dockerFileDir>${project.build.directory}/docker-resources</dockerFileDir>
+                                                <tags>
+                                                    <tag>${project.version}</tag>
+                                                </tags>
+                                            </build>
+                                        </image>
+                                    </images>
+                                </configuration>
+                            </execution>
 						</executions>
 					</plugin>
 					<plugin>
@@ -321,7 +341,7 @@
                                         <test.target.route>${test.target.route}</test.target.route>
                                     </systemPropertyVariables>
                                     <dependenciesToScan>
-                                        <dependency>edu.hm.cs.fwp.cnj:cnj-hello-backend-test</dependency>
+                                        <dependency>edu.hm.cs.fwp.cloud:cnj-hello-backend-test</dependency>
                                     </dependenciesToScan>
                                 </configuration>
                             </execution>

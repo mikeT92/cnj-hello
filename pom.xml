@@ -12,8 +12,8 @@
     </properties>
 	<modules>
 		<module>cnj-hello-backend-test</module>
-		<module>cnj-hello-backend-spring</module>
 		<module>cnj-hello-backend-javaee</module>
 		<module>cnj-hello-backend-micro</module>
+        <module>cnj-hello-backend-spring</module>
 	</modules>
 </project>

@@ -123,7 +123,7 @@
         </dependency>
         <!-- test dependencies -->
         <dependency>
-            <groupId>edu.hm.cs.fwp.cnj</groupId>
+            <groupId>edu.hm.cs.fwp.cloud</groupId>
             <artifactId>cnj-hello-backend-test</artifactId>
             <version>1.0.0</version>
             <scope>test</scope>
@@ -368,7 +368,7 @@
                                         <test.target.route>${test.target.route}</test.target.route>
                                     </systemPropertyVariables>
                                     <dependenciesToScan>
-                                        <dependency>edu.hm.cs.fwp.cnj:cnj-hello-backend-test</dependency>
+                                        <dependency>edu.hm.cs.fwp.cloud:cnj-hello-backend-test</dependency>
                                     </dependenciesToScan>
                                 </configuration>
                             </execution>

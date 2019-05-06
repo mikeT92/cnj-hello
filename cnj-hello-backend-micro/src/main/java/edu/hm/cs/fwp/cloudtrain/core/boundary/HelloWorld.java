@@ -1,6 +1,6 @@
 package edu.hm.cs.fwp.cloudtrain.core.boundary;
 
-import edu.hm.cs.fwp.cloudtrain.core.entity.Message;
+import edu.hm.cs.fwp.cloud.core.entity.Message;
 
 import javax.ejb.Stateless;
 import java.util.UUID;
