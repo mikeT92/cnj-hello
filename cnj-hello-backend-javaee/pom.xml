@@ -29,6 +29,7 @@
         <maven.install.plugin.version>2.5.2</maven.install.plugin.version>
         <maven.site.plugin.version>3.7.1</maven.site.plugin.version>
         <maven.war.plugin.version>3.2.2</maven.war.plugin.version>
+        <maven.helm.plugin.version>0.7.5</maven.helm.plugin.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -172,6 +173,12 @@
                     <artifactId>docker-compose-maven-plugin</artifactId>
                     <version>${maven.docker.compose.plugin.version}</version>
                 </plugin>
+                <!-- Helm Maven Plugin to install/delete Helm Charts on Kubernetes -->
+                <plugin>
+                    <groupId>edu.hm.cs.fwp.cloud.tools</groupId>
+                    <artifactId>helm-maven-plugin</artifactId>
+                    <version>${maven.helm.plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -190,7 +197,7 @@
                                     <version>[3.5,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
-                                    <version>1.8</version>
+                                    <version>${java.version}</version>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -360,5 +367,108 @@
 				</plugins>
 			</build>
 		</profile>
+        <profile>
+            <id>integration-test</id>
+            <properties>
+                <test.target.route>http://localhost:30080/cnj-hello-backend-javaee</test.target.route>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/*SystemTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-helm-resources</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/helm</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                    <outputDirectory>${project.build.directory}/helm-resources</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>edu.hm.cs.fwp.cloud.tools</groupId>
+                        <artifactId>helm-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>helm-install</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>install</goal>
+                                </goals>
+                                <configuration>
+                                    <helmChartDirectory>${project.build.directory}/helm-resources/${project.artifactId}</helmChartDirectory>
+                                    <helmReleaseName>${project.artifactId}</helmReleaseName>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>helm-delete</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>delete</goal>
+                                </goals>
+                                <configuration>
+                                    <helmReleaseName>${project.artifactId}</helmReleaseName>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>run-system-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <forkCount>0</forkCount>
+                                    <includes>
+                                        <include>**/*SystemTest.java</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <test.target.route>${test.target.route}</test.target.route>
+                                    </systemPropertyVariables>
+                                    <dependenciesToScan>
+                                        <dependency>edu.hm.cs.fwp.cloud:cnj-hello-backend-test</dependency>
+                                    </dependenciesToScan>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>verify-system-test-results</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                                <phase>verify</phase>
+                                <configuration>
+                                    <failIfNoTests>true</failIfNoTests>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
