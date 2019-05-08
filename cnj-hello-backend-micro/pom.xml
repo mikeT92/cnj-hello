@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.hm.cs.fwp.cloud</groupId>
     <artifactId>cnj-hello-backend-micro</artifactId>
-    <version>1.0.0</version>
+    <version>${revision}${sha1}${changelist}</version>
     <packaging>war</packaging>
     <description>Simple cloud native Java backend based on Eclipse MicroProfile</description>
     <properties>
@@ -33,6 +33,12 @@
         <maven.site.plugin.version>3.7.1</maven.site.plugin.version>
         <maven.war.plugin.version>3.2.2</maven.war.plugin.version>
         <maven.payara.micro.plugin.version>1.0.3</maven.payara.micro.plugin.version>
+        <maven.helm.plugin.version>0.7.5</maven.helm.plugin.version>
+        <maven.flatten.plugin.version>1.1.0</maven.flatten.plugin.version>
+        <!-- new Maven version management -->
+        <revision>1.0.0</revision>
+        <sha1></sha1>
+        <changelist></changelist>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -142,8 +148,8 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven.compiler.plugin.version}</version>
                     <configuration>
-                        <source>1.8</source>
-                        <target>1.8</target>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
                         <parameters>true</parameters>
                     </configuration>
                 </plugin>
@@ -204,6 +210,18 @@
                     <artifactId>payara-micro-maven-plugin</artifactId>
                     <version>${maven.payara.micro.plugin.version}</version>
                 </plugin>
+                <!-- Flatten Maven plugin adding support of CI friendly version numbers -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>${maven.flatten.plugin.version}</version>
+                </plugin>
+                <!-- Helm Maven Plugin to install/delete Helm Charts on Kubernetes -->
+                <plugin>
+                    <groupId>edu.hm.cs.fwp.cloud.tools</groupId>
+                    <artifactId>helm-maven-plugin</artifactId>
+                    <version>${maven.helm.plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -222,10 +240,34 @@
                                     <version>[3.5,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
-                                    <version>1.8</version>
+                                    <version>${java.version}</version>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -345,6 +387,109 @@
                                     <composeFile>
                                         ${project.basedir}/src/test/docker/${project.artifactId}/docker-compose.yml
                                     </composeFile>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>run-system-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <forkCount>0</forkCount>
+                                    <includes>
+                                        <include>**/*SystemTest.java</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <test.target.route>${test.target.route}</test.target.route>
+                                    </systemPropertyVariables>
+                                    <dependenciesToScan>
+                                        <dependency>edu.hm.cs.fwp.cloud:cnj-hello-backend-test</dependency>
+                                    </dependenciesToScan>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>verify-system-test-results</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                                <phase>verify</phase>
+                                <configuration>
+                                    <failIfNoTests>true</failIfNoTests>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>integration-test</id>
+            <properties>
+                <test.target.route>http://localhost:30080/${project.artifactId}</test.target.route>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/*SystemTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-helm-resources</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/helm</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                    <outputDirectory>${project.build.directory}/helm-resources</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>edu.hm.cs.fwp.cloud.tools</groupId>
+                        <artifactId>helm-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>helm-install</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>install</goal>
+                                </goals>
+                                <configuration>
+                                    <helmChartDirectory>${project.build.directory}/helm-resources/${project.artifactId}</helmChartDirectory>
+                                    <helmReleaseName>${project.artifactId}</helmReleaseName>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>helm-delete</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>delete</goal>
+                                </goals>
+                                <configuration>
+                                    <helmReleaseName>${project.artifactId}</helmReleaseName>
                                 </configuration>
                             </execution>
                         </executions>

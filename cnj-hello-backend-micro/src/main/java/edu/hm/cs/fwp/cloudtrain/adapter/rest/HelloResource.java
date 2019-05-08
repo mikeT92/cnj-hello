@@ -1,7 +1,7 @@
 package edu.hm.cs.fwp.cloudtrain.adapter.rest;
 
-import edu.hm.cs.fwp.cloud.core.entity.Message;
-import edu.hm.cs.fwp.cloud.core.boundary.HelloWorld;
+import edu.hm.cs.fwp.cloudtrain.core.entity.Message;
+import edu.hm.cs.fwp.cloudtrain.core.boundary.HelloWorld;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
