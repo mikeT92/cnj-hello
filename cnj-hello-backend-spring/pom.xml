@@ -231,6 +231,8 @@
         </plugins>
     </build>
     <profiles>
+        <!-- profile pre-commit-stage representing the local build supposed to be run before committing/pushing to GIT -->
+        <!-- compiles all sources; runs unit tests; builds and tests docker image using system tests -->
         <profile>
             <id>pre-commit-stage</id>
             <properties>
@@ -239,10 +241,6 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                    </plugin>
-                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
@@ -250,6 +248,10 @@
                                 <exclude>**/*SystemTest.java</exclude>
                             </excludes>
                         </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -376,13 +378,16 @@
                 </plugins>
             </build>
         </profile>
+        <!-- profile commit-stage representing commit-stage of CI build -->
+        <!-- builds and analyzes all sources; runs unit tests -->
         <profile>
-            <id>integration-test</id>
-            <properties>
-                <test.target.route>http://localhost:30080/${project.artifactId}</test.target.route>
-            </properties>
+            <id>commit-stage</id>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
@@ -392,10 +397,274 @@
                             </excludes>
                         </configuration>
                     </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- profile dockerize-stage representing dockerize-stage of CI build -->
+        <!-- builds, tests and pushes docker image -->
+        <profile>
+            <id>dockerize-stage</id>
+            <properties>
+                <spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+                <maven.install.skip>true</maven.install.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- skip compilation, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <skipMain>true</skipMain>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip unit tests, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip JAR packaging, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <configuration>
+                            <skipIfEmpty>true</skipIfEmpty>
+                        </configuration>
+                    </plugin>
+                    <!-- copy resources for docker build applying filtering -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>default-resources</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>resources</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-docker-resources</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/docker</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                    <outputDirectory>${project.build.directory}/docker-resources</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- copy previously built artifact for docker build -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>download-docker-resources</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>${project.groupId}</groupId>
+                                            <artifactId>${project.artifactId}</artifactId>
+                                            <version>${project.version}</version>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                            <outputDirectory>${project.build.directory}/docker-resources</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- build and push docker image -->
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>build-docker-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                                <configuration>
+                                    <images>
+                                        <image>
+                                            <name>${docker.image.name}</name>
+                                            <build>
+                                                <dockerFileDir>${project.build.directory}/docker-resources</dockerFileDir>
+                                                <tags>
+                                                    <tag>${project.version}</tag>
+                                                </tags>
+                                            </build>
+                                        </image>
+                                    </images>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>push-docker-image</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>push</goal>
+                                </goals>
+                                <configuration>
+                                    <images>
+                                        <image>
+                                            <name>${docker.image.name}</name>
+                                            <build>
+                                                <dockerFileDir>${project.build.directory}/docker-resources</dockerFileDir>
+                                                <tags>
+                                                    <tag>${project.version}</tag>
+                                                </tags>
+                                            </build>
+                                        </image>
+                                    </images>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- start docker containers before running tests and stop them after running tests -->
+                    <plugin>
+                        <groupId>com.dkanejs.maven.plugins</groupId>
+                        <artifactId>docker-compose-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>start-docker-containers</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>up</goal>
+                                </goals>
+                                <configuration>
+                                    <composeFile>
+                                        ${project.basedir}/src/test/docker/${project.artifactId}/docker-compose.yml
+                                    </composeFile>
+                                    <detachedMode>true</detachedMode>
+                                    <verbose>false</verbose>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>stop-docker-containers</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>down</goal>
+                                </goals>
+                                <configuration>
+                                    <composeFile>
+                                        ${project.basedir}/src/test/docker/${project.artifactId}/docker-compose.yml
+                                    </composeFile>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- run all system tests on started docker containers -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>run-system-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <forkCount>0</forkCount>
+                                    <includes>
+                                        <include>**/*SystemTest.java</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <test.target.route>${test.target.route}</test.target.route>
+                                    </systemPropertyVariables>
+                                    <dependenciesToScan>
+                                        <dependency>edu.hm.cs.fwp.cloud:cnj-hello-backend-test</dependency>
+                                    </dependenciesToScan>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>verify-system-test-results</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                                <phase>verify</phase>
+                                <configuration>
+                                    <failIfNoTests>true</failIfNoTests>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- profile integration-test-stage representing integration-test-stage of CI build -->
+        <!-- deploys Helm release to integration test environment on Kubernetes, runs system tests and deletes the Helm release -->
+        <profile>
+            <id>integration-test-stage</id>
+            <properties>
+                <test.target.route>http://localhost:30080/${project.artifactId}</test.target.route>
+                <k8s.namespace>int</k8s.namespace>
+                <spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+                <maven.install.skip>true</maven.install.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- skip compilation, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <skipMain>true</skipMain>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip unit tests, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip JAR packaging, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <configuration>
+                            <skipIfEmpty>true</skipIfEmpty>
+                        </configuration>
+                    </plugin>
+                    <!-- copy resources for helm deployment applying filtering -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default-resources</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>resources</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>copy-helm-resources</id>
                                 <phase>package</phase>
@@ -414,6 +683,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- install/upgrade helm release before running tests; delete helm release after running tests -->
                     <plugin>
                         <groupId>edu.hm.cs.fwp.cloud.tools</groupId>
                         <artifactId>helm-maven-plugin</artifactId>
@@ -427,6 +697,7 @@
                                 <configuration>
                                     <helmChartDirectory>${project.build.directory}/helm-resources/${project.artifactId}</helmChartDirectory>
                                     <helmReleaseName>${project.artifactId}</helmReleaseName>
+                                    <helmNamespace>int</helmNamespace>
                                 </configuration>
                             </execution>
                             <execution>
@@ -441,6 +712,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- run system tests on installed helm release -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
@@ -452,6 +724,7 @@
                                 </goals>
                                 <phase>integration-test</phase>
                                 <configuration>
+                                    <skip>false</skip>
                                     <forkCount>0</forkCount>
                                     <includes>
                                         <include>**/*SystemTest.java</include>

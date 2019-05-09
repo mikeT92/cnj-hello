@@ -1,4 +1,4 @@
-FROM hmfwpcnj/docker-payara-full:latest
+FROM hmfwpcnj/cnj-docker-payara-full:latest
 
 LABEL maintainer="michael.theis@hm.edu" \
         ${project.groupId}.${project.artifactId}.project="HMFWPCNJ" \

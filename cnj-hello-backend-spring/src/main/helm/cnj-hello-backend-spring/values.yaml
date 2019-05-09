@@ -12,9 +12,9 @@ image:
 
 probes:
   readiness:
-    path: /api/v1/probes/readiness
+    path: /actuator/health
   liveness:
-    path: /api/v1/probes/liveness
+    path: /actuator/health
 
 nameOverride: ""
 fullnameOverride: ""
