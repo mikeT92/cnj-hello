@@ -274,6 +274,8 @@
         </plugins>
     </build>
     <profiles>
+        <!-- profile pre-commit-stage representing the local build supposed to be run before committing/pushing to GIT -->
+        <!-- compiles all sources; runs unit tests; builds and tests docker image using system tests -->
         <profile>
             <id>pre-commit-stage</id>
             <properties>
@@ -429,6 +431,8 @@
                 </plugins>
             </build>
         </profile>
+        <!-- profile commit-stage representing commit-stage of CI build -->
+        <!-- builds and analyzes all sources; runs unit tests -->
         <profile>
             <id>commit-stage</id>
             <build>
@@ -460,23 +464,55 @@
                 </plugins>
             </build>
         </profile>
+        <!-- profile dockerize-stage representing dockerize-stage of CI build -->
+        <!-- builds, tests and pushes docker image -->
         <profile>
             <id>dockerize-stage</id>
+            <properties>
+                <maven.install.skip>true</maven.install.skip>
+            </properties>
             <build>
                 <plugins>
+                    <!-- skip compilation, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <skipMain>true</skipMain>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip unit tests, since we are working with an already built artifact -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <excludes>
-                                <exclude>**/*SystemTest.java</exclude>
-                            </excludes>
+                            <skip>true</skip>
                         </configuration>
                     </plugin>
+                    <!-- skip WAR packaging, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- copy resources for docker build applying filtering -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>default-resources</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>resources</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>copy-docker-resources</id>
                                 <phase>package</phase>
@@ -495,6 +531,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- copy previously built artifact for docker build -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-dependency-plugin</artifactId>
@@ -521,6 +558,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- build and push docker image -->
                     <plugin>
                         <groupId>io.fabric8</groupId>
                         <artifactId>docker-maven-plugin</artifactId>
@@ -567,6 +605,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- start docker containers before running tests and stop them after running tests -->
                     <plugin>
                         <groupId>com.dkanejs.maven.plugins</groupId>
                         <artifactId>docker-compose-maven-plugin</artifactId>
@@ -599,6 +638,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- run all system tests on started docker containers -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
@@ -637,18 +677,57 @@
                 </plugins>
             </build>
         </profile>
+        <!-- profile integration-test-stage representing integration-test-stage of CI build -->
+        <!-- deploys Helm release to integration test environment on Kubernetes, runs system tests and deletes the Helm release -->
         <profile>
             <id>integration-test-stage</id>
             <properties>
                 <test.target.route>http://localhost:30080/${project.artifactId}</test.target.route>
                 <k8s.namespace>int</k8s.namespace>
+                <maven.install.skip>true</maven.install.skip>
             </properties>
             <build>
                 <plugins>
+                    <!-- skip compilation, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <skipMain>true</skipMain>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip unit tests, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- skip WAR packaging, since we are working with an already built artifact -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <!-- copy resources for helm deployment applying filtering -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
                         <executions>
+                            <execution>
+                                <id>default-resources</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>resources</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>copy-helm-resources</id>
                                 <phase>package</phase>
@@ -667,6 +746,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- install/upgrade helm release before running tests; delete helm release after running tests -->
                     <plugin>
                         <groupId>edu.hm.cs.fwp.cloud.tools</groupId>
                         <artifactId>helm-maven-plugin</artifactId>
@@ -695,6 +775,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- run system tests on installed helm release -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
